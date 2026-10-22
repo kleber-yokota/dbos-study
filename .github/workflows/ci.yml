@@ -45,6 +45,12 @@ jobs:
           done
           echo "Floci did not become healthy in 120s" && exit 1
 
+      # The EC2 catalog AMI maps to this public image; pulling it explicitly
+      # makes a pull failure surface here instead of as a silent instance
+      # launch failure inside terraform apply.
+      - name: Pre-pull the EC2 guest image
+        run: docker pull public.ecr.aws/docker/library/ubuntu:24.04
+
       - name: Build Lambda package
         run: python python/scripts/build-zip.py
 
@@ -55,6 +61,18 @@ jobs:
         run: |
           terraform -chdir=python/terraform init
           terraform -chdir=python/terraform apply -auto-approve
+
+      # If provisioning failed, dump what Floci and the child containers saw.
+      - name: Diagnostics (Floci + container logs)
+        if: failure()
+        run: |
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          echo "=== floci logs ==="
+          docker logs floci 2>&1 | tail -150
+          for c in $(docker ps -aq --filter 'name=floci-'); do
+            echo "=== logs: $(docker inspect -f '{{.Name}}' "$c" 2>/dev/null) ==="
+            docker logs "$c" 2>&1 | tail -60
+          done
 
       - name: Wait for the EC2 API
         working-directory: python
@@ -126,6 +144,9 @@ jobs:
         working-directory: golang
         run: ./scripts/build-zip.sh
 
+      - name: Pre-pull the EC2 guest image
+        run: docker pull public.ecr.aws/docker/library/ubuntu:24.04
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -133,6 +154,18 @@ jobs:
         run: |
           terraform -chdir=golang/terraform init
           terraform -chdir=golang/terraform apply -auto-approve
+
+      # If provisioning failed, dump what Floci and the child containers saw.
+      - name: Diagnostics (Floci + container logs)
+        if: failure()
+        run: |
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
+          echo "=== floci logs ==="
+          docker logs floci 2>&1 | tail -150
+          for c in $(docker ps -aq --filter 'name=floci-'); do
+            echo "=== logs: $(docker inspect -f '{{.Name}}' "$c" 2>/dev/null) ==="
+            docker logs "$c" 2>&1 | tail -60
+          done
 
       - name: Wait for the EC2 API
         working-directory: golang
