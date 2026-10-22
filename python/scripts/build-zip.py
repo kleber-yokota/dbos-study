@@ -2,6 +2,11 @@
 
 The result goes to ``terraform/worker.zip`` (referenced by
 ``aws_lambda_function``).
+
+Dependencies are resolved with ``uv`` for CPython 3.13 (the runtime Floci
+emulates). No Docker is involved, so this works locally and in CI alike —
+a bind-mounted temp dir would point at the wrong filesystem when the job
+runs in a container while Docker runs on the host.
 """
 
 import shutil
@@ -19,10 +24,15 @@ def main() -> None:
     print("[build-zip] installing dependencies (python 3.13)...")
     subprocess.run(
         [
-            "docker", "run", "--rm",
-            "-v", f"{pkg}:/pkg",
-            "python:3.13",
-            "pip", "install", "--quiet", "--target", "/pkg", "dbos~=3.3",
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            "3.13",
+            "--target",
+            str(pkg),
+            "--quiet",
+            "dbos~=3.3",
         ],
         check=True,
     )
@@ -30,6 +40,7 @@ def main() -> None:
     zip_path = Path(
         shutil.make_archive(str(PROJECT_ROOT / "terraform" / "worker"), "zip", str(pkg))
     )
+    shutil.rmtree(tmp)
     print(f"[build-zip] done: {zip_path} ({zip_path.stat().st_size / 1e6:.1f} MB)")
 
 
