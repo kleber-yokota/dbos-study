@@ -115,6 +115,27 @@ Go Lambda specifics: `provided.al2023` runtime + static `bootstrap` binary
 endpoint never blocks on the 30 s listen window, and `dbos.NewClient` never
 migrates the schema (`SkipMigrations` hardcoded) — the worker owns it.
 
+## Known limitations
+
+Open points the study deliberately leaves to a real-AWS follow-up:
+
+- **Executor id with several concurrent Lambdas.** The runs used a single
+  Lambda environment at a time. In the Python SDK the executor id defaults to
+  the `DBOS__VMID` env var or `"local"`, so several concurrently listening
+  Lambda environments would share one executor id — how DBOS recovers
+  workflows left behind by dead executors in that case was not exercised.
+- **Shutdown behavior (Python).** The Python worker ends each window with
+  `DBOS.destroy()`; the Go mirror uses an explicit `Shutdown` timeout. The
+  fate of in-flight steps when a window ends (and the Lambda is released)
+  was only observed via automatic PENDING recovery, not systematically
+  tested.
+- **Fixed 30 s listen window.** The Lambda listens for `window_sec` (default
+  30) per invoke; the window is a study assumption, not something measured
+  against real traffic or Lambda execution limits.
+- **Nothing validated on real AWS.** Every run is against Floci; real
+  Lambda timeouts, IAM roles, VPC networking and RDS credentials were never
+  exercised.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE). If you use or adapt this project, please
