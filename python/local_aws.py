@@ -41,7 +41,9 @@ def floci_boto(service: str):
         region_name=FLOCI_REGION,
         aws_access_key_id="floci",
         aws_secret_access_key="floci",
-        config=Config(read_timeout=600, retries={"max_attempts": 1, "mode": "standard"}),
+        config=Config(
+            read_timeout=600, retries={"max_attempts": 1, "mode": "standard"}
+        ),
     )
 
 

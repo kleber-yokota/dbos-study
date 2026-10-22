@@ -29,6 +29,20 @@ from local_aws import (
 
 app = FastAPI()
 
+# One client for the whole app (mirrors the Go API's getOrMakeClient) — the
+# lazy creation happens on the first request, after the schema exists.
+_client: DBOSClient | None = None
+
+
+def _get_client() -> DBOSClient:
+    """Lazy singleton shared by all endpoints (the Go API does the same)."""
+    global _client
+    if _client is None:
+        _client = DBOSClient(
+            system_database_url=system_database_url(), application_name=APP_NAME
+        )
+    return _client
+
 
 def _wake() -> None:
     floci_boto("lambda").invoke(
@@ -56,7 +70,7 @@ def dispatch(name: str, value: str | None = None) -> dict[str, str]:
                 raise RuntimeError("worker did not create the schema in 90s")
             time.sleep(2)
 
-    client = DBOSClient(system_database_url=db_url, application_name=APP_NAME)
+    client = _get_client()
     client.register_queue(QUEUE, on_conflict="never_update")
     arg = value if value is not None else f"api-{uuid.uuid4().hex[:8]}"
     handle = client.enqueue(
@@ -66,13 +80,6 @@ def dispatch(name: str, value: str | None = None) -> dict[str, str]:
 
     _wake()
     return {"workflow_id": handle.get_workflow_id()}
-
-
-def _require_client() -> DBOSClient:
-    client = DBOSClient(
-        system_database_url=system_database_url(), application_name=APP_NAME
-    )
-    return client
 
 
 def _require_workflow(client: DBOSClient, workflow_id: str) -> None:
@@ -86,7 +93,7 @@ def _require_workflow(client: DBOSClient, workflow_id: str) -> None:
 @app.post("/workflows/{workflow_id}/cancel")
 def cancel_workflow(workflow_id: str) -> dict[str, str]:
     """Kills the execution: marks it CANCELLED (the built-in process killer)."""
-    client = _require_client()
+    client = _get_client()
     _require_workflow(client, workflow_id)
     client.cancel_workflows([workflow_id])
     return {"workflow_id": workflow_id, "status": "CANCELLED"}
@@ -99,7 +106,7 @@ def resume_workflow(workflow_id: str) -> dict[str, str]:
     Same ``workflow_id`` — no new workflow is created; completed steps are
     replayed from the system DB.
     """
-    client = _require_client()
+    client = _get_client()
     _require_workflow(client, workflow_id)
     client.resume_workflow(workflow_id)
     _wake()

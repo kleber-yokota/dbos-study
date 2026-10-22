@@ -29,7 +29,10 @@ def _api_url() -> str:
     res = floci_boto("ec2").describe_instances()
     for r in res["Reservations"]:
         for i in r["Instances"]:
-            if i["State"]["Name"] == "running" and _instance_tags(i).get("Name") == "dbos-client":
+            if (
+                i["State"]["Name"] == "running"
+                and _instance_tags(i).get("Name") == "dbos-client"
+            ):
                 return f"http://{i['PrivateIpAddress']}:{API_PORT}"
     raise AssertionError("EC2 instance dbos-client not found in running")
 

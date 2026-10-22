@@ -87,7 +87,8 @@ def handler(event, context):
     DBOS.register_queue(QUEUE, worker_concurrency=concurrency)
 
     print(
-        f"[worker] listening on '{QUEUE}' for {window_sec}s (concurrency {concurrency})",
+        f"[worker] listening on '{QUEUE}' for {window_sec}s "
+        f"(concurrency {concurrency})",
         flush=True,
     )
     time.sleep(window_sec)

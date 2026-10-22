@@ -58,10 +58,13 @@ def main() -> None:
         deadline = time.time() + 90
         while not schema_ready(db_url):
             if time.time() > deadline:
-                raise SystemExit("worker did not create the schema in 90s — check the Lambda logs")
+                raise SystemExit(
+                    "worker did not create the schema in 90s — check the Lambda logs"
+                )
             time.sleep(2)
 
-    # The worker is the authority on queue config; the client only creates it if missing.
+    # The worker is the authority on queue config; the client only creates it
+    # if missing.
     client.register_queue(QUEUE, on_conflict="never_update")
 
     handles = [
@@ -75,7 +78,10 @@ def main() -> None:
         print(f"  {h.get_workflow_id()}")
 
     for wake in range(1, args.max_wakes + 1):
-        print(f"[client] wake-up {wake}/{args.max_wakes}: invoking {FUNCTION_NAME} (no data)")
+        print(
+            f"[client] wake-up {wake}/{args.max_wakes}: invoking "
+            f"{FUNCTION_NAME} (no data)"
+        )
         _wake(lam, args)
         deadline = time.time() + args.window_sec + 10
         while time.time() < deadline:
