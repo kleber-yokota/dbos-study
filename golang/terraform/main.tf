@@ -94,7 +94,7 @@ resource "aws_instance" "client_go" {
     export AWS_REGION=us-east-1
 
     # Go toolchain (Ubuntu 24.04 apt ships 1.22; the DBOS SDK requires >= 1.25)
-    GOVER=$(curl -s https://go.dev/VERSION?m=text | head -1)
+    GOVER=go1.27.3
     curl -sSL "https://go.dev/dl/$GOVER.linux-amd64.tar.gz" -o /tmp/go.tar.gz
     tar -C /usr/local -xzf /tmp/go.tar.gz
     export PATH=/usr/local/go/bin:$PATH
