@@ -25,6 +25,8 @@ EC2 (api)  ──enqueue──▶  RDS Postgres (dbos-go-db)  ◀──processes
 - `api/main.go` — EC2: `GET|POST /workflows?name=<wf>&value=<optional arg>`
   (port 8000). Enqueue in the system DB + **async** invoke (`InvocationType: Event`)
   to wake up the worker.
+- `scripts/build-zip.sh` — builds `terraform/bootstrap.zip` (static binary with
+  the executable bit, the same role as `python/scripts/build-zip.py`).
 - `tests/e2e_test.go` — E2E via Floci: discovers the EC2 by the tag
   `Name=dbos-client-go`, reads the `dbos-go-db` RDS endpoint, dispatches and waits
   for a terminal status in the system DB.
@@ -36,8 +38,7 @@ EC2 (api)  ──enqueue──▶  RDS Postgres (dbos-go-db)  ◀──processes
 
 ```bash
 # 1. Lambda build (static binary -> terraform/bootstrap.zip)
-cd worker && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o bootstrap . && cd ..
-python3 -c "import zipfile; z=zipfile.ZipFile('terraform/bootstrap.zip','w',zipfile.ZIP_DEFLATED); i=zipfile.ZipInfo('bootstrap'); i.external_attr=0o755<<16; z.writestr(i, open('worker/bootstrap','rb').read())"
+./scripts/build-zip.sh
 
 # 2. provision (state in terraform/)
 cd terraform && terraform apply -auto-approve
