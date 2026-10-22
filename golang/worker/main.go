@@ -33,9 +33,14 @@ func (e *workerError) Error() string { return e.Msg }
 
 // --- steps (mirror of worker/worker.py) ---
 
-func stepFetch(ctx context.Context) (string, error) {
+func stepFetch(ctx context.Context, task string) (string, error) {
 	time.Sleep(500 * time.Millisecond)
-	return "payload", nil
+	return "payload:" + task, nil
+}
+
+func stepValidate(ctx context.Context, payload string) (bool, error) {
+	time.Sleep(500 * time.Millisecond)
+	return payload != "", nil
 }
 
 func stepFailIfException(ctx context.Context, task string) (bool, error) {
@@ -46,17 +51,36 @@ func stepFailIfException(ctx context.Context, task string) (bool, error) {
 	return true, nil
 }
 
-func stepConfirm(ctx context.Context, approved bool) (string, error) {
+func stepConfirm(ctx context.Context, task string, approved bool) (string, error) {
 	time.Sleep(500 * time.Millisecond)
 	if approved {
-		return "confirmed", nil
+		return task + ":confirmed", nil
 	}
-	return "rejected", nil
+	return task + ":rejected", nil
 }
 
-// pipeline: the three steps shared by the two workflows.
-func pipeline(ctx dbos.Context, task string) (string, error) {
-	if _, err := dbos.RunAsStep(ctx, stepFetch); err != nil {
+// ProcessTask: normal flow (fetch -> validate -> confirm).
+func ProcessTask(ctx dbos.Context, task string) (string, error) {
+	payload, err := dbos.RunAsStep(ctx, func(c context.Context) (string, error) {
+		return stepFetch(c, task)
+	})
+	if err != nil {
+		return "", err
+	}
+	approved, err := dbos.RunAsStep(ctx, func(c context.Context) (bool, error) {
+		return stepValidate(c, payload)
+	})
+	if err != nil {
+		return "", err
+	}
+	return confirm(ctx, task, approved)
+}
+
+// TestWorkflow: planned failure when task == "exception".
+func TestWorkflow(ctx dbos.Context, task string) (string, error) {
+	if _, err := dbos.RunAsStep(ctx, func(c context.Context) (string, error) {
+		return stepFetch(c, task)
+	}); err != nil {
 		return "", err
 	}
 	approved, err := dbos.RunAsStep(ctx, func(c context.Context) (bool, error) {
@@ -65,23 +89,14 @@ func pipeline(ctx dbos.Context, task string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	suffix, err := dbos.RunAsStep(ctx, func(c context.Context) (string, error) {
-		return stepConfirm(c, approved)
+	return confirm(ctx, task, approved)
+}
+
+// confirm: the last step, shared by both workflows.
+func confirm(ctx dbos.Context, task string, approved bool) (string, error) {
+	return dbos.RunAsStep(ctx, func(c context.Context) (string, error) {
+		return stepConfirm(c, task, approved)
 	})
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s:%s", task, suffix), nil
-}
-
-// ProcessTask: normal flow (fetch -> validate -> confirm).
-func ProcessTask(ctx dbos.Context, task string) (string, error) {
-	return pipeline(ctx, task)
-}
-
-// TestWorkflow: planned failure when task == "exception".
-func TestWorkflow(ctx dbos.Context, task string) (string, error) {
-	return pipeline(ctx, task)
 }
 
 func main() {
