@@ -1,6 +1,6 @@
 # "AWS" infrastructure of the diagram, emulated by Floci (port 4566).
 #
-#   EC2    -> aws_instance (client: enqueue.py)
+#   EC2    -> aws_instance (client: FastAPI app)
 #   RDS    -> aws_db_instance (Postgres 18.1) = DBOS system database
 #   LAMBDA -> aws_lambda_function (dbos-worker) = workers
 
@@ -34,12 +34,6 @@ variable "db_password" {
   type      = string
   default   = "dbos_local"
   sensitive = true
-}
-
-variable "task_count" {
-  description = "How many tasks the EC2 node enqueues on startup"
-  type        = number
-  default     = 5
 }
 
 variable "floci_role_arn" {
@@ -80,7 +74,7 @@ resource "aws_lambda_function" "worker" {
   }
 }
 
-# Emulated EC2 — the diagram node that runs the client (enqueue.py).
+# Emulated EC2 — the diagram node that runs the client (FastAPI app).
 # Floci spins up a container and runs the UserData on boot,
 # exactly like real AWS.
 resource "aws_instance" "client" {
@@ -93,6 +87,7 @@ resource "aws_instance" "client" {
   user_data = <<-EOT
     #!/bin/bash
     set -e
+    exec > /var/log/user-data.log 2>&1
     export DBOS_SYSTEM_DATABASE_URL="postgresql://dbos:${var.db_password}@${aws_db_instance.dbos.endpoint}/dbos"
     export FLOCI_ENDPOINT="$${AWS_ENDPOINT_URL:-http://localhost:4566}"
     export AWS_ACCESS_KEY_ID=floci
@@ -102,7 +97,8 @@ resource "aws_instance" "client" {
       curl -sSf https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
       python3 /tmp/get-pip.py --break-system-packages
     fi
-    python3 -m pip install --quiet --break-system-packages dbos boto3 fastapi uvicorn
+    # Versions pinned to pyproject.toml / the study run (reproducible boot)
+    python3 -m pip install --quiet --break-system-packages 'dbos~=3.3' 'boto3~=1.43' 'fastapi~=0.159' 'uvicorn~=0.54'
     mkdir -p /root/api
     echo '${filebase64("${path.root}/../local_aws.py")}' | base64 -d > /root/api/local_aws.py
     echo '${filebase64("${path.root}/../app.py")}' | base64 -d > /root/api/app.py
