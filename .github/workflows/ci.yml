@@ -45,11 +45,12 @@ jobs:
           done
           echo "Floci did not become healthy in 120s" && exit 1
 
-      # The EC2 catalog AMI maps to this public image; pulling it explicitly
-      # makes a pull failure surface here instead of as a silent instance
-      # launch failure inside terraform apply.
+      # The EC2 catalog AMI maps to this public image (Amazon ECR Public — not
+      # a Docker Hub mirror, so the runners' shared-IP rate limits don't
+      # apply). Pulling explicitly also surfaces pull failures here instead
+      # of as a silent instance launch failure inside terraform apply.
       - name: Pre-pull the EC2 guest image
-        run: docker pull public.ecr.aws/docker/library/ubuntu:24.04
+        run: docker pull public.ecr.aws/amazonlinux/amazonlinux:2023
 
       - name: Build Lambda package
         run: python python/scripts/build-zip.py
@@ -145,7 +146,7 @@ jobs:
         run: ./scripts/build-zip.sh
 
       - name: Pre-pull the EC2 guest image
-        run: docker pull public.ecr.aws/docker/library/ubuntu:24.04
+        run: docker pull public.ecr.aws/amazonlinux/amazonlinux:2023
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3

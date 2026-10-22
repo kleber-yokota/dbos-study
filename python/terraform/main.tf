@@ -78,8 +78,9 @@ resource "aws_lambda_function" "worker" {
 # Floci spins up a container and runs the UserData on boot,
 # exactly like real AWS.
 resource "aws_instance" "client" {
-  # Floci catalog: Ubuntu 24.04 x86_64 (python 3.12 — dbos requires >=3.10)
-  ami           = "ami-ubuntu2404-amd64"
+  # Floci catalog: Amazon Linux 2023 (UserData installs python 3.11 via dnf —
+  # the base ships 3.9, below dbos' >=3.10 minimum)
+  ami           = "ami-amazonlinux2023"
   instance_type = "t3.micro"
   tags          = { Name = "dbos-client" }
   depends_on    = [aws_lambda_function.worker]
@@ -93,17 +94,15 @@ resource "aws_instance" "client" {
     export AWS_ACCESS_KEY_ID=floci
     export AWS_SECRET_ACCESS_KEY=floci
     export AWS_DEFAULT_REGION=us-east-1
-    if ! python3 -m pip --version 2>/dev/null; then
-      curl -sSf https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-      python3 /tmp/get-pip.py --break-system-packages
-    fi
+    # AL2023 ships Python 3.9; dbos needs >= 3.10, so install 3.11 + pip.
+    dnf install -y -q python3.11 python3.11-pip
     # Versions pinned to pyproject.toml / the study run (reproducible boot)
-    python3 -m pip install --quiet --break-system-packages 'dbos~=3.3' 'boto3~=1.43' 'fastapi~=0.159' 'uvicorn~=0.54'
+    python3.11 -m pip install --quiet 'dbos~=3.3' 'boto3~=1.43' 'fastapi~=0.159' 'uvicorn~=0.54'
     mkdir -p /root/api
     echo '${filebase64("${path.root}/../local_aws.py")}' | base64 -d > /root/api/local_aws.py
     echo '${filebase64("${path.root}/../app.py")}' | base64 -d > /root/api/app.py
     cd /root/api
-    nohup python3 -m uvicorn app:app --host 0.0.0.0 --port 8000 > /var/log/api.log 2>&1 &
+    nohup python3.11 -m uvicorn app:app --host 0.0.0.0 --port 8000 > /var/log/api.log 2>&1 &
     sleep 3
     echo "[api] smoke dispatch: $(curl -s 'http://127.0.0.1:8000/workflows?name=process_task')"
   EOT

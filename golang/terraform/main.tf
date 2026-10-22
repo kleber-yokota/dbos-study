@@ -77,7 +77,7 @@ resource "aws_lambda_function" "worker_go" {
 # Emulated EC2 — the Go API node. The UserData compiles the binary inside the
 # container (official Go toolchain, since the DBOS SDK requires >= 1.25).
 resource "aws_instance" "client_go" {
-  ami           = "ami-ubuntu2404-amd64"
+  ami           = "ami-amazonlinux2023"
   instance_type = "t3.micro"
   tags          = { Name = "dbos-client-go" }
   depends_on    = [aws_lambda_function.worker_go]
@@ -93,7 +93,9 @@ resource "aws_instance" "client_go" {
     export AWS_DEFAULT_REGION=us-east-1
     export AWS_REGION=us-east-1
 
-    # Go toolchain (Ubuntu 24.04 apt ships 1.22; the DBOS SDK requires >= 1.25)
+    # The AL2023 base image is minimal (no tar, no Go)
+    dnf install -y -q tar
+    # Go toolchain (AL2023 ships no Go; the DBOS SDK requires >= 1.25)
     GOVER=go1.27.3
     curl -sSL "https://go.dev/dl/$GOVER.linux-amd64.tar.gz" -o /tmp/go.tar.gz
     tar -C /usr/local -xzf /tmp/go.tar.gz
