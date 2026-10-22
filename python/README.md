@@ -46,7 +46,7 @@ Useful:
 
 ```bash
 terraform -chdir=terraform output system_database_url -raw
-docker logs floci --since 5m | grep client   # client output on the EC2
+# client boot output: /var/log/user-data.log, API: /var/log/api.log (in the EC2)
 terraform -chdir=terraform destroy           # tears everything down
 ```
 
