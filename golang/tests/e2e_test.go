@@ -146,9 +146,12 @@ func waitTerminal(c dbos.Client, id string) (dbos.WorkflowStatus, error) {
 
 func TestDispatchProcessTask(t *testing.T) {
 	base := apiURL(t)
-	c := dbosClient(t)
 
+	// Dispatch first: on a fresh stack the API's first dispatch wakes the
+	// worker, which creates the schema and the queue (the API waits for
+	// that before responding) — so the client below is safe.
 	id := dispatch(t, base, "process_task", "")
+	c := dbosClient(t)
 	st, err := waitTerminal(c, id)
 	if err != nil {
 		t.Fatalf("waiting for workflow: %v", err)
@@ -201,9 +204,9 @@ func TestUnknownWorkflowEndpointsFail(t *testing.T) {
 // no new workflow is created.
 func TestCancelThenResumeSameWorkflowID(t *testing.T) {
 	base := apiURL(t)
-	c := dbosClient(t)
 
 	id := dispatch(t, base, "test_workflow", "")
+	c := dbosClient(t)
 
 	// 2) kill the execution by workflow_id
 	postAction(t, base+"/workflows/"+id+"/cancel")
@@ -243,10 +246,10 @@ func TestCancelThenResumeSameWorkflowID(t *testing.T) {
 // (resume/fork); here we only verify that the worker keeps processing.
 func TestWorkerSurvivesWorkflowError(t *testing.T) {
 	base := apiURL(t)
-	c := dbosClient(t)
 
 	// 1) dispatch with value='exception' -> planned failure -> ERROR
 	idFail := dispatch(t, base, "test_workflow", "exception")
+	c := dbosClient(t)
 	st, err := waitTerminal(c, idFail)
 	if err != nil {
 		t.Fatalf("waiting for workflow: %v", err)
