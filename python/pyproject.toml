@@ -13,3 +13,11 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+# Makes `pytest tests/` work from the `python/` dir without `python -m`.
+pythonpath = ["."]
+
+[tool.ruff.lint]
+# The glue code intentionally catches broad exceptions (Floci/SDK quirks).
+select = ["E", "F", "I"]
