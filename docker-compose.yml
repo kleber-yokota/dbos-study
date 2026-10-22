@@ -1,0 +1,15 @@
+services:
+  floci:
+    image: floci/floci:2.3.0
+    container_name: floci
+    ports:
+      - "4566:4566"
+    volumes:
+      # Required for the Lambda service: Floci creates a real container per function
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Data persistence (S3 buckets, functions, etc.)
+      - ./data:/app/data
+    environment:
+      # The docker.sock is root-only; keep Floci as root to access the socket
+      FLOCI_RUN_AS_ROOT: "true"
+    restart: unless-stopped
