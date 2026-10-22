@@ -31,8 +31,8 @@ EC2 (api)  ──enqueue──▶  RDS Postgres (dbos-go-db)  ◀──processes
   `Name=dbos-client-go`, reads the `dbos-go-db` RDS endpoint, dispatches and waits
   for a terminal status in the system DB.
 - `terraform/main.tf` — provisions RDS + Lambda + EC2 on Floci (isolated state).
-  The UserData downloads the Go toolchain (the SDK requires >= 1.25; the 24.04 apt
-  ships 1.22), compiles the API inside the container and starts it.
+  The UserData downloads the Go toolchain (the SDK requires >= 1.25; AL2023
+  ships no Go), compiles the API inside the container and starts it.
 
 ## Usage
 

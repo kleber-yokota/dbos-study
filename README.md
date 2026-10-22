@@ -93,9 +93,10 @@ Notes that came out of running the study (run details: `python/README.md`,
   `/var/lib/user-data.sh` and executed at boot; logs via
   `/var/log/user-data.log` / `/var/log/api.log` inside the container and
   `docker logs floci`.
-- The AMI must satisfy the runtime: `ami-ubuntu2404-amd64` (Python 3.12; dbos
-  needs >= 3.10) — the AL2023 image (Python 3.9) won't work. Go side: the
-  toolchain is downloaded from `go.dev/dl` inside the container.
+- The AMI must satisfy the runtime: we use `ami-amazonlinux2023` (its UserData
+  installs Python 3.11 via `dnf` — the base ships 3.9, below dbos' >= 3.10
+  minimum). Go side: the toolchain is downloaded from `go.dev/dl` inside the
+  container.
 - Terraform: use `aws_db_instance.endpoint` (host:port) — provider 6.x does
   not expose `address` with port. `user_data` is capped at 16 KB (that's why
   the Go stack compiles inside the container instead of embedding everything).

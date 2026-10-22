@@ -6,7 +6,7 @@ stack via `../docker-compose.yml`) and **Terraform** creates the three
 resources.
 
 ```
-EC2 (aws_instance, Ubuntu 24.04)               Floci (emulated AWS)
+EC2 (aws_instance, Amazon Linux 2023)           Floci (emulated AWS)
 API (UserData) ──enqueue──> main_queue ─┤
      │                                  RDS Postgres 18.1 (DBOS system database)
      └── wake-up (no data) ──> Lambda dbos-worker ── dequeue ──> DBOS
@@ -61,8 +61,8 @@ Notes:
 - First run: the initial wake-up makes the worker create the DBOS schema in
   the system database (`app.py`/`enqueue.py` handle this automatically).
 - The Lambda invoke is only a trigger — no data flows through the payload.
-- EC2 AMI: `ami-ubuntu2404-amd64` from the Floci catalog (python 3.12; dbos
-  requires >= 3.10). The AL2023 image (python 3.9) won't work.
+- EC2 AMI: `ami-amazonlinux2023` from the Floci catalog — UserData installs
+  python3.11 via dnf (the base ships 3.9; dbos requires >= 3.10).
 - Emulated SSM (`SendCommand`) runs commands on the instance after boot.
 - If a `terraform apply` recreated the EC2 container without restarting the
   API, force a fresh instance: `terraform -chdir=terraform apply
